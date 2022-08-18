@@ -1,26 +1,18 @@
-import React, { Component } from 'react';
+import { useState } from 'react';
 import { Searchbar } from './Searchbar/Searchbar';
 import { ImageGallery } from './ImageGallery/ImageGallery';
 
-export class App extends Component {
-  state = {
-    searchValue: '',
+export function App() {
+  const [searchValue, setSearchValue] = useState('');
+
+  const addSearchValue = inputData => {
+    setSearchValue(inputData);
   };
 
-  addSearchValue = inputData => {
-    this.setState({
-      searchValue: inputData,
-    });
-  };
-
-  render() {
-    const { searchValue } = this.state;
-
-    return (
-      <div>
-        <Searchbar onSubmit={this.addSearchValue} />
-        <ImageGallery searchValue={searchValue} />
-      </div>
-    );
-  }
+  return (
+    <div>
+      <Searchbar onSubmit={addSearchValue} />
+      <ImageGallery searchValue={searchValue} />
+    </div>
+  );
 }

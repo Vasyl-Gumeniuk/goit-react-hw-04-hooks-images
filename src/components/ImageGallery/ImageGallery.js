@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import Notiflix from 'notiflix';
 import fetchImages from '../../api/api';
@@ -14,59 +14,56 @@ Notiflix.Notify.init({
   timeout: 3000,
 });
 
-export class ImageGallery extends Component {
-  state = {
-    imagesList: null,
-    page: 1,
-    error: null,
-    status: 'idle',
-    modalImageUrl: '',
-    showModal: false,
-    activeBtn: false,
-  };
+const Status = {
+  IDLE: 'idle',
+  PENDING: 'pending',
+  RESOLVED: 'resolved',
+  REJECTED: 'rejected',
+};
 
-  componentDidUpdate = prevProps => {
-    const preventProps = prevProps.searchValue;
-    const nextProps = this.props.searchValue;
-    const { page } = this.state;
+export const ImageGallery = ({ searchValue }) => {
+  const [imagesList, setImagesList] = useState(null);
+  const [page, setPage] = useState(1);
+  const [status, setStatus] = useState(Status.IDLE);
+  const [modalImageUrl, setModalImageUrl] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [activeBtn, setActiveBtn] = useState(false);
 
-    if (preventProps !== nextProps) {
-      this.setState({ status: 'pending' });
+  useEffect(() => {
+    if (!searchValue) {
+      return;
+    }
 
-      try {
-        fetchImages(nextProps, page).then(res => {
-          if (res.total === 0) {
-            Notiflix.Notify.failure(
-              'Sorry, there are no images matching your search query. Please try again.'
-            );
-            this.setState({
-              status: 'idle',
-              imagesList: null,
-            });
-            return;
-          }
-          Notiflix.Notify.success(`Good, there are ${res.totalHits} results.`);
-          this.setState({
-            imagesList: res.hits,
-            page: 2,
-            status: 'resolved',
-            activeBtn: false,
-          });
-        });
-      } catch (error) {
-        this.setState({ error });
-      }
+    fetchPictures();
+  }, [searchValue]);
+
+  const fetchPictures = () => {
+    setStatus(Status.PENDING);
+
+    try {
+      fetchImages(searchValue, page).then(res => {
+        if (res.total === 0) {
+          Notiflix.Notify.failure(
+            'Sorry, there are no images matching your search query. Please try again.'
+          );
+          setStatus(Status.IDLE);
+          setImagesList(null);
+          return;
+        }
+        Notiflix.Notify.success(`Good, there are ${res.totalHits} results.`);
+        setImagesList(res.hits);
+        setPage(2);
+        setStatus(Status.RESOLVED);
+        setActiveBtn(false);
+      });
+    } catch (error) {
+      console.error(error);
     }
   };
 
-  onBtnClick = () => {
-    const { page } = this.state;
-    const searchValue = this.props.searchValue;
-
-    this.setState({
-      status: 'pending',
-      activeBtn: true,
-    });
+  const onBtnClick = () => {
+    setStatus(Status.PENDING);
+    setActiveBtn(true);
 
     try {
       fetchImages(searchValue, page).then(res => {
@@ -74,62 +71,51 @@ export class ImageGallery extends Component {
           Notiflix.Notify.warning(
             'We are sorry, but you have reached the end of search results.'
           );
-          this.setState({
-            status: 'idle',
-            activeBtn: true,
-          });
+          setStatus(Status.IDLE);
+          setActiveBtn(true);
           return;
         }
 
-        this.setState(prevState => ({
-          imagesList: [...prevState.imagesList, ...res.hits],
-          page: prevState.page + 1,
-          status: 'resolved',
-          activeBtn: false,
-        }));
+        setImagesList(prevImgList => [...prevImgList, ...res.hits]);
+        setPage(prevPage => prevPage + 1);
+        setStatus(Status.RESOLVED);
+        setActiveBtn(false);
       });
     } catch (error) {
-      this.setState({ error });
+      console.error(error);
     }
   };
 
-  toggleModal = () => {
-    this.setState(({ showModal }) => ({
-      showModal: !showModal,
-    }));
+  const toggleModal = () => {
+    setShowModal(!showModal);
   };
 
-  setInfoForModal = url => {
-    this.setState({ modalImageUrl: url });
-    this.toggleModal();
+  const setInfoForModal = url => {
+    setModalImageUrl(url);
+    toggleModal();
   };
 
-  render() {
-    const { imagesList, status, showModal, modalImageUrl, activeBtn } =
-      this.state;
-
-    if (status === 'pending') {
-      Loading.dots();
-    } else {
-      Loading.remove();
-    }
-
-    if (imagesList || status === 'resolved') {
-      return (
-        <div>
-          <ImageGalleryList
-            imagesList={imagesList}
-            setInfoForModal={this.setInfoForModal}
-          />
-          <Button onBtnClick={this.onBtnClick} disabled={activeBtn} />
-          {showModal && (
-            <Modal onClose={this.toggleModal} largeImageURL={modalImageUrl} />
-          )}
-        </div>
-      );
-    }
+  if (status === Status.PENDING) {
+    Loading.dots();
+  } else {
+    Loading.remove();
   }
-}
+
+  if (imagesList || status === Status.RESOLVED) {
+    return (
+      <div>
+        <ImageGalleryList
+          imagesList={imagesList}
+          setInfoForModal={setInfoForModal}
+        />
+        <Button onBtnClick={onBtnClick} disabled={activeBtn} />
+        {showModal && (
+          <Modal onClose={toggleModal} largeImageURL={modalImageUrl} />
+        )}
+      </div>
+    );
+  }
+};
 
 ImageGallery.propTypes = {
   searchValue: PropTypes.string.isRequired,
