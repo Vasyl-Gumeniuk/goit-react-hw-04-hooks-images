@@ -28,11 +28,6 @@ export const Searchbar = ({ onSubmit }) => {
     let inputData = inputValue;
 
     onSubmit(inputData);
-    resetForm();
-  };
-
-  const resetForm = () => {
-    setInputValue('');
   };
 
   return (
