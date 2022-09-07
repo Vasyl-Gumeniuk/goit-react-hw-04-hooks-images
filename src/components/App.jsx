@@ -30,6 +30,9 @@ export function App() {
   const [totalHits, setTotalHits] = useState(null);
 
   const addSearchValue = inputData => {
+    if (searchValue === inputData) {
+      return;
+    }
     setSearchValue(inputData);
     resetStates();
   };
@@ -39,47 +42,49 @@ export function App() {
       return;
     }
 
+    const fetchPictures = () => {
+      setStatus(Status.PENDING);
+      setActiveBtn(true);
+
+      try {
+        fetchImages(searchValue, page).then(res => {
+          if (res.total === 0) {
+            Notiflix.Notify.failure(
+              'Sorry, there are no images matching your search query. Please try again.'
+            );
+            setStatus(Status.IDLE);
+            setImagesList([]);
+            return;
+          }
+
+          if (page === 1) {
+            Notiflix.Notify.success(
+              `Good, there are ${res.totalHits} results.`
+            );
+          }
+
+          if (res.hits.length !== 0) {
+            setImagesList(prevImgList => [...prevImgList, ...res.hits]);
+            setStatus(Status.RESOLVED);
+            setActiveBtn(false);
+            setTotalHits(res.totalHits);
+          }
+
+          if (page > res.totalHits / 12) {
+            Notiflix.Notify.warning(
+              'We are sorry, but you have reached the end of search results.'
+            );
+            setStatus(Status.IDLE);
+            return;
+          }
+        });
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
     fetchPictures();
   }, [searchValue, page]);
-
-  const fetchPictures = () => {
-    setStatus(Status.PENDING);
-    setActiveBtn(true);
-
-    try {
-      fetchImages(searchValue, page).then(res => {
-        if (res.total === 0) {
-          Notiflix.Notify.failure(
-            'Sorry, there are no images matching your search query. Please try again.'
-          );
-          setStatus(Status.IDLE);
-          setImagesList([]);
-          return;
-        }
-
-        if (page === 1) {
-          Notiflix.Notify.success(`Good, there are ${res.totalHits} results.`);
-        }
-
-        if (res.hits.length !== 0) {
-          setImagesList(prevImgList => [...prevImgList, ...res.hits]);
-          setStatus(Status.RESOLVED);
-          setActiveBtn(false);
-          setTotalHits(res.totalHits);
-        }
-
-        if (page > res.totalHits / 12) {
-          Notiflix.Notify.warning(
-            'We are sorry, but you have reached the end of search results.'
-          );
-          setStatus(Status.IDLE);
-          return;
-        }
-      });
-    } catch (error) {
-      console.error(error);
-    }
-  };
 
   const resetStates = () => {
     setImagesList([]);
